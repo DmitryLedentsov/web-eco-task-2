@@ -53,19 +53,21 @@ flowchart LR
 ├── README.md
 ├── .gitignore
 ├── scripts/
-│   ├── bootstrap-host.sh       # первичная подготовка Ubuntu/VPS
-│   ├── setup.sh                # первоначальная настройка Hermes
+│   ├── create-lab-user.sh       # разово: создать non-root user на VPS, если есть только root
+│   ├── bootstrap-host.sh        # первичная подготовка Ubuntu/VPS
+│   ├── setup.sh                 # первоначальная настройка Hermes
 │   ├── start.sh
 │   ├── stop.sh
 │   ├── restart.sh
 │   ├── status.sh
 │   ├── logs.sh
 │   ├── update.sh
-│   ├── verify.sh               # проверки конфигурации P1
-│   ├── create-demo-cron.sh     # автономная cron-задача для демонстрации
+│   ├── verify.sh                # проверки конфигурации P1
+│   ├── smoke-test.sh            # terminal + files + web
+│   ├── create-demo-cron.sh      # автономная cron-задача для демонстрации
 │   ├── cron-list.sh
 │   ├── test-skill.sh
-│   └── collect-evidence.sh     # сохранить данные для отчета
+│   └── collect-evidence.sh      # сохранить данные для отчета
 ├── templates/
 │   └── memories/
 │       ├── USER.md
@@ -77,8 +79,8 @@ flowchart LR
 │   ├── threat-model.md
 │   ├── debugging-log.md
 │   └── evidence-checklist.md
-├── data/                       # runtime Hermes, создается локально, gitignored
-└── workspace/                  # рабочий каталог агента, gitignored
+├── data/                        # runtime Hermes, создается локально, gitignored
+└── workspace/                   # рабочий каталог агента, gitignored
 ```
 
 ## 1. Требования
@@ -95,7 +97,9 @@ flowchart LR
 
 ## 2. Подготовка чистого VPS
 
-Клонировать репозиторий и запустить:
+### Если провайдер уже выдал non-root пользователя с sudo
+
+Сразу клонировать репозиторий и запустить bootstrap:
 
 ```bash
 git clone https://github.com/DmitryLedentsov/web-eco-task-2.git
@@ -103,7 +107,27 @@ cd web-eco-task-2
 bash scripts/bootstrap-host.sh
 ```
 
-Скрипт:
+### Если на свежем VPS есть только root
+
+Один раз под root:
+
+```bash
+git clone https://github.com/DmitryLedentsov/web-eco-task-2.git /tmp/web-eco-task-2
+cd /tmp/web-eco-task-2
+bash scripts/create-lab-user.sh hermeslab
+```
+
+Скрипт создаст пользователя `hermeslab`, добавит его в `sudo`, перенесет root `authorized_keys` (если он есть) и предложит задать локальный пароль для sudo.
+
+После этого открыть **новую SSH-сессию как `hermeslab`**, заново клонировать репозиторий в его home и выполнить:
+
+```bash
+git clone https://github.com/DmitryLedentsov/web-eco-task-2.git
+cd web-eco-task-2
+bash scripts/bootstrap-host.sh
+```
+
+`bootstrap-host.sh`:
 
 1. устанавливает обновления и необходимые пакеты;
 2. устанавливает Docker Engine и Compose plugin из официального репозитория Docker;
@@ -170,10 +194,29 @@ bash scripts/setup.sh
 ```bash
 bash scripts/start.sh
 bash scripts/status.sh
-bash scripts/logs.sh
+bash scripts/verify.sh
 ```
 
-## 6. Обычное управление
+## 6. Проверка обязательных инструментов
+
+Задание требует проверить web, работу с файлами и запуск команд. Для этого есть один smoke test:
+
+```bash
+bash scripts/smoke-test.sh
+```
+
+Он просит агента:
+
+1. выполнить `date -u` через terminal;
+2. создать `/workspace/p1-smoke.txt` через file tool;
+3. прочитать файл обратно;
+4. загрузить `https://example.com` через web tool.
+
+Успех каждого шага должен подтверждаться реальным tool call, а не текстовым утверждением модели.
+
+Scheduler проверяется отдельно через cron ниже.
+
+## 7. Обычное управление
 
 ```bash
 bash scripts/start.sh      # поднять контейнер
@@ -185,13 +228,13 @@ bash scripts/update.sh     # pull нового image + recreate
 bash scripts/verify.sh     # проверки P1
 ```
 
-## 7. Проверка Telegram allowlist
+## 8. Проверка Telegram allowlist
 
 С основного аккаунта отправить боту сообщение и убедиться, что он отвечает.
 
 Затем написать боту с другого Telegram-аккаунта. Hermes должен отклонить запрос или не разрешить работу с агентом. Этот результат нужно зафиксировать скриншотом для отчета.
 
-## 8. Проверка памяти
+## 9. Проверка памяти
 
 Шаблоны находятся в:
 
@@ -211,7 +254,7 @@ cat data/memories/USER.md
 cat data/memories/MEMORY.md
 ```
 
-## 9. Проверка собственного skill
+## 10. Проверка собственного skill
 
 Skill `research-source-check` устанавливается автоматически.
 
@@ -229,7 +272,7 @@ bash scripts/test-skill.sh https://hermes-agent.nousresearch.com/
 
 Ожидаемый результат: агент извлекает сведения из источника, явно отмечает отсутствующие данные и не выдумывает недоступные факты.
 
-## 10. Автономная cron-задача
+## 11. Автономная cron-задача
 
 Для P1 создается простая периодическая задача, которая запускается без открытого Telegram-клиента и отправляет результат обратно в Telegram.
 
@@ -237,6 +280,12 @@ bash scripts/test-skill.sh https://hermes-agent.nousresearch.com/
 
 ```bash
 bash scripts/create-demo-cron.sh <CHAT_ID>
+```
+
+Можно передать собственный интервал вторым аргументом:
+
+```bash
+bash scripts/create-demo-cron.sh <CHAT_ID> 'every 5m'
 ```
 
 Посмотреть задания:
@@ -247,7 +296,7 @@ bash scripts/cron-list.sh
 
 Задача выполняет небольшой health-check внутри изолированного окружения и сообщает UTC-время, uptime и свободное место. Для демонстрации можно временно поставить короткий интервал, дождаться сообщения при закрытом Telegram-клиенте, сделать скриншот, а затем удалить/отключить задачу.
 
-## 11. Доказательство автозапуска после reboot
+## 12. Доказательство автозапуска после reboot
 
 До перезагрузки:
 
@@ -272,7 +321,7 @@ bash scripts/collect-evidence.sh after-reboot
 
 Контейнер должен иметь состояние `running` благодаря `restart: unless-stopped`.
 
-## 12. Что собрать для отчета P1
+## 13. Что собрать для отчета P1
 
 Минимальный набор:
 
@@ -281,6 +330,7 @@ bash scripts/collect-evidence.sh after-reboot
 - скриншот диалога с агентом через Telegram;
 - скриншот отказа постороннему Telegram-аккаунту;
 - результат `verify.sh`;
+- результат `smoke-test.sh`;
 - доказательство работы cron;
 - состояние контейнера после reboot без ручного запуска;
 - скриншот страницы LLM-провайдера с лимитом расходов / подтверждением бесплатного режима;
@@ -290,7 +340,7 @@ bash scripts/collect-evidence.sh after-reboot
 
 Шаблоны для фиксации результатов лежат в `docs/`.
 
-## 13. T3 — безопасность
+## 14. T3 — безопасность
 
 Начальная модель угроз находится в [`docs/threat-model.md`](docs/threat-model.md). Для каждой угрозы фиксируются:
 
