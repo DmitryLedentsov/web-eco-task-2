@@ -1,0 +1,17 @@
+# Hermes runtime: contains secrets, sessions, memory state and logs.
+data/
+
+# Agent workspace is runtime state, not source code.
+workspace/*
+!workspace/.gitkeep
+
+# Collected runtime evidence may contain chat/log fragments.
+evidence/*
+!evidence/.gitkeep
+
+# Local editor/system files.
+.env
+*.swp
+.DS_Store
+.idea/
+.vscode/

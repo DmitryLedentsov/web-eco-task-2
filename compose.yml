@@ -1,0 +1,32 @@
+services:
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: web-eco-task-2-hermes
+
+    # Required by P1: after host reboot Docker starts the gateway automatically.
+    restart: unless-stopped
+    command: ["gateway", "run"]
+    init: true
+
+    # Only dedicated lab data is visible inside the container.
+    # The host home directory and Docker socket are deliberately not mounted.
+    volumes:
+      - ./data:/opt/data
+      - ./workspace:/workspace
+    working_dir: /workspace
+
+    # Basic container hardening. Hermes still has outbound network access for
+    # Telegram, the LLM provider and research web tools.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    # No ports are published: Telegram uses outbound polling/API connections.
+
+    # Keep enough history for the report without letting Docker logs grow forever.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
