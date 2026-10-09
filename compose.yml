@@ -15,12 +15,11 @@ services:
       - ./workspace:/workspace
     working_dir: /workspace
 
-    # Basic container hardening. Hermes still has outbound network access for
-    # Telegram, the LLM provider and research web tools.
+    # Prevent processes from gaining additional privileges. We intentionally keep
+    # Docker's default capability set because the official image must be able to
+    # initialize and write the bind-mounted Hermes home during setup.
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
 
     # No ports are published: Telegram uses outbound polling/API connections.
 
