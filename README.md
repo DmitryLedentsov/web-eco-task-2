@@ -41,7 +41,7 @@ flowchart LR
 - наружу не публикуются TCP-порты — Telegram работает через исходящие соединения;
 - Telegram-доступ ограничивается `TELEGRAM_ALLOWED_USERS`;
 - API-ключи и токены хранятся в `data/.env`, который не попадает в Git;
-- контейнер запускается с `no-new-privileges` и без Linux capabilities;
+- для контейнера включен `no-new-privileges`, privileged mode не используется;
 - Docker-логи ротируются;
 - `restart: unless-stopped` обеспечивает автоматическое восстановление после перезагрузки VPS.
 
