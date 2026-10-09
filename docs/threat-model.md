@@ -15,7 +15,7 @@ The protected system is an isolated VPS running Hermes Agent in Docker. The agen
 | API-key/token exfiltration | Agent reads secret files/environment and sends data through an allowed outbound HTTP request or includes it in a model/tool call | Dedicated low-value credentials; isolated machine; secrets excluded from Git; no unrelated secrets on VPS; limited provider budget; rotate compromised keys | Medium: the container still needs some credentials to operate and has outbound network access |
 | Memory exfiltration | `MEMORY.md`, `USER.md`, sessions or logs contain sensitive information and are sent outside the intended workflow | Keep lab memory non-sensitive; do not mount personal data; avoid publishing `data/`; review evidence before sharing | Low–medium for the lab, higher for real personal/work use |
 | Destructive filesystem action | Agent deletes or corrupts files accessible to its terminal | Only `/workspace` and Hermes runtime are persistent; dedicated VPS; no Docker socket; no production mounts; backups/evidence before experiments | Low for external systems, medium for loss of the lab runtime itself |
-| Host/container escape impact | Exploit in agent dependency, browser, tool or container runtime escapes the intended boundary | Separate VPS; non-root host operator; Docker isolation; `no-new-privileges`; dropped Linux capabilities; no privileged mode; patched host | Low probability but potentially high impact; containers are not a VM security boundary |
+| Host/container escape impact | Exploit in agent dependency, browser, tool or container runtime escapes the intended boundary | Separate VPS; non-root host operator; Docker isolation; `no-new-privileges`; no privileged mode; patched host | Low probability but potentially high impact; containers are not a VM security boundary |
 | Unauthorized Telegram access | Third party discovers the bot and sends commands | `TELEGRAM_ALLOWED_USERS`; allow-all prohibited; negative test from second account; token kept outside Git | Low while token and account remain uncompromised |
 | Bot-token compromise | Token leaked via Git, logs, screenshots or another process | `data/` gitignored; evidence collector excludes secrets; rotate token immediately on leak | Medium because anyone with the bot token can impersonate the bot even if Hermes allowlist still limits agent commands |
 | LLM budget abuse | Agent loops, cron fires too often, attacker induces many model calls | Free/limited provider configuration; explicit cron cadence; inspect cron table; provider-side spend/rate limit | Low–medium; free endpoints can still rate-limit and break scheduled work |
@@ -35,7 +35,7 @@ An LLM receives both trusted instructions and untrusted natural-language content
 3. Firewall with inbound traffic denied except SSH.
 4. Docker container isolation.
 5. No host Docker socket or host home-directory mount.
-6. `no-new-privileges` and dropped container capabilities.
+6. `no-new-privileges` and no privileged container mode.
 7. Telegram user allowlist with a negative-access test.
 8. Secrets outside Git.
 9. Docker log rotation.
